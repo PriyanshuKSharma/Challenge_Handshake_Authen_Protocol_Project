@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket CHAP Authentication</title>
+</head>
+<body>
+    <label for="userid">User ID:</label>
+    <input type="text" id="userid"><br><br>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password"><br><br>
+
+    <label for="key">Key (Generated through Server):</label>
+    <input type="text" id="key"><br><br>
+
+    <button onclick="authenticate()">Authenticate</button>
+
+    <script>
+        const WebSocketClient = new WebSocket('ws://localhost:8080');
+
+        WebSocketClient.onopen = function() {
+            console.log('Connected to server');
+        };
+
+        WebSocketClient.onmessage = function(event) {
+            console.log('Received message from server:', event.data);
+
+            if (event.data === 'Authentication successful') {
+                console.log('Authentication successful');
+            } else {
+                console.log('Authentication failed');
+            }
+        };
+
+        WebSocketClient.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+
+        WebSocketClient.onclose = function() {
+            console.log('Connection closed');
+        };
+
+        function authenticate() {
+            const userid = document.getElementById('userid').value;
+            const password = document.getElementById('password').value;
+            const key = document.getElementById('key').value;
+
+            const message = JSON.stringify({ userid, password, key });
+            WebSocketClient.send(message);
+            console.log('Sending authentication details to server:', message);
+        }
+    </script>
+</body>
+</html>
