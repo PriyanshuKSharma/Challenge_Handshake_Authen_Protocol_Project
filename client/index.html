@@ -12,13 +12,14 @@
     <label for="password">Password:</label>
     <input type="password" id="password"><br><br>
 
-    <label for="key">Key (Generated through Server):</label>
-    <input type="text" id="key"><br><br>
+    <label for="email">Email:</label>
+    <input type="email" id="email"><br><br>
 
     <button onclick="authenticate()">Authenticate</button>
 
     <script>
         const WebSocketClient = new WebSocket('ws://localhost:8080');
+        let authenticated = false;
 
         WebSocketClient.onopen = function() {
             console.log('Connected to server');
@@ -27,10 +28,22 @@
         WebSocketClient.onmessage = function(event) {
             console.log('Received message from server:', event.data);
 
-            if (event.data === 'Authentication successful') {
-                console.log('Authentication successful');
+            if (authenticated) {
+                // If already authenticated, prompt for the key
+                const key = prompt('Enter the key:');
+                if (key !== null) {
+                    // If user input a key, send it to the server
+                    WebSocketClient.send(key);
+                    console.log('Sending key to server:', key);
+                }
             } else {
-                console.log('Authentication failed');
+                // If not authenticated, check the authentication response
+                if (event.data === 'Authentication successful') {
+                    console.log('Authentication successful');
+                    authenticated = true;
+                } else {
+                    console.log('Authentication failed');
+                }
             }
         };
 
@@ -45,9 +58,9 @@
         function authenticate() {
             const userid = document.getElementById('userid').value;
             const password = document.getElementById('password').value;
-            const key = document.getElementById('key').value;
+            const email = document.getElementById('email').value;
 
-            const message = JSON.stringify({ userid, password, key });
+            const message = JSON.stringify({ userid, password, email });
             WebSocketClient.send(message);
             console.log('Sending authentication details to server:', message);
         }
