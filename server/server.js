@@ -1,52 +1,23 @@
 require('dotenv').config(); // Load environment variables from .env file
 const WebSocket = require('ws');
-const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
 // Configure transporter for Gmail
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER, // Gmail account email
-        pass: process.env.EMAIL_PASS // Gmail account password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
     }
 });
 
-// Function to send email
-function sendEmail(receiverEmail, key) {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: receiverEmail,
-        subject: 'Your Authentication Key',
-        text: `Your authentication key is: ${key}`
-    };
-
-    transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-            console.error('Error sending email:', error);
-        } else {
-            console.log('Email sent:', info.response);
-        }
-    });
-}
+// User credentials (replace with your actual user data)
+const users = {
+    user1: { password: 'password1', email: 'user1@example.com', key: 'generated_key1' },
+    user2: { password: 'password2', email: 'user2@example.com', key: 'generated_key2' }
+};
 
 const wss = new WebSocket.Server({ port: 8080 });
-
-// User credentials (replace with your actual user data)
-const users = [
-    { userid: 'user1', password: 'password1' },
-    { userid: 'user2', password: 'password2' }
-];
-
-// Function to generate challenge
-function generateChallenge() {
-    return crypto.randomBytes(16).toString('hex');
-}
-
-// Function to calculate response hash
-function calculateResponse(challenge, secretKey) {
-    return crypto.createHash('sha256').update(challenge + secretKey).digest('hex');
-}
 
 wss.on('connection', function connection(ws) {
     console.log('Client connected');
@@ -54,34 +25,37 @@ wss.on('connection', function connection(ws) {
     ws.on('message', function incoming(message) {
         console.log('Received authentication details from client:', message);
 
-        const { userid, password, key } = JSON.parse(message);
+        const { userid, password, email, key } = JSON.parse(message);
 
-        // Find user in users array
-        const user = users.find(u => u.userid === userid);
+        // Find user in users object
+        const user = users[userid];
 
-        if (user && user.password === password) {
-            // Generate and send challenge to client
-            const challenge = generateChallenge();
-            console.log('Sending challenge to client:', challenge);
-            ws.send(challenge);
-
-            // Verify response
-            ws.once('message', function verifyResponse(response) {
-                console.log('Received response from client:', response);
-
-                if (response === calculateResponse(challenge, key)) {
-                    console.log('Authentication successful');
-                    ws.send('Authentication successful');
-                    // Send key to user's email
-                    sendEmail(user.userid, key);
-                } else {
-                    console.log('Authentication failed');
-                    ws.send('Authentication failed');
-                }
-            });
+        if (user && user.password === password && user.email === email && user.key === key) {
+            console.log('Authentication successful');
+            ws.send('Authentication successful');
+            // Send email verification
+            sendEmailVerification(email);
         } else {
-            console.log('Invalid userid or password');
-            ws.send('Invalid userid or password');
+            console.log('Authentication failed');
+            ws.send('Authentication failed');
         }
     });
 });
+
+// Function to send email verification
+function sendEmailVerification(receiverEmail) {
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: receiverEmail,
+        subject: 'Email Verification',
+        text: 'Your email has been successfully verified.'
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+            console.error('Error sending email:', error);
+        } else {
+            console.log('Email verification sent:', info.response);
+        }
+    });
+}
